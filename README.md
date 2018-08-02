@@ -9,13 +9,12 @@ more works need to be done, but not now.
 
 version: 0.0
 
-
 ## install
 clone this repository or download it.
 
 run 
 ```shell
-sh ./install
+sh ./install.sh
 ```
 
 after installing run
