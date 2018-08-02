@@ -23,6 +23,7 @@ then
     exit
 fi
 
+CBUILD_PATH="$HOME/.cbuild.path"
 # help information
 if [ "$1" = "-h" ]
 then
@@ -31,17 +32,37 @@ then
 else
     if [ $# -ne 2 ]
     then
+        if [ -f "${CBUILD_PATH}" ] 
+        then 
+            i=0
+            while read line
+            do
+                if [ $i -eq 0 ]
+                then
+                    PROJECT_NAME=$line
+                fi
+                if [ $i -eq 1 ]
+                then        
+                    PROJECT_EXECUTE=$line
+                fi
+                i=`expr $i + 1`
+            done < $CBUILD_PATH
+        else 
         echo
         echo "-- Usage: cbuild <[-c][-r][-b][-e]> [your_project_name]"
         echo
         exit
+        fi
+    else
+        PROJECT_NAME="$2"
+        PROJECT_EXECUTE="$2"
+        echo $(pwd)/$PROJECT_NAME > $CBUILD_PATH
+        echo $PROJECT_NAME >> $CBUILD_PATH
     fi 
 fi
-
 # remove the project
 if [ "$1" = "-r" ]
 then
-    PROJECT_NAME="$2"
     if [ -d "${PROJECT_NAME}" ]
     then 
         echo 
@@ -59,13 +80,13 @@ fi
 # build the project
 if [ "$1" = "-b" ]
 then
-    PROJECT_NAME="$2"
     if [ -d "${PROJECT_NAME}" ]
     then 
         echo 
         echo "-- Building: ${PROJECT_NAME}"
         echo
         cd ${PROJECT_NAME}/build
+        echo `pwd`
         cmake ..
         make -j4
         exit
@@ -79,13 +100,12 @@ fi
 # execute the project
 if [ "$1" = "-e" ]
 then
-    PROJECT_NAME="$2"
     if [ -d "${PROJECT_NAME}" ]
     then 
         echo 
         echo "-- Execute: ${PROJECT_NAME}"
         echo
-        ${PROJECT_NAME}/bin/${PROJECT_NAME}
+        ${PROJECT_NAME}/bin/${PROJECT_EXECUTE}
         exit
     fi
     echo 
@@ -98,7 +118,6 @@ fi
 # remove the project
 if [ "$1" = "-c" ]
 then
-    PROJECT_NAME="$2"
 
     # make sure the project is unique in the current workstation
     if [ -d "${PROJECT_NAME}" ]
@@ -110,7 +129,7 @@ then
     fi
  
     # text content
-    CMAKE_CONTENT="cmake_minimum_required(VERSION 2.8)\nproject(${PROJECT_NAME})\nset(CMAKE_CXX_STANDARD 11)\nset(CMAKE_RUNTIME_OUTPUT_DIRECTORY \${PROJECT_SOURCE_DIR}/bin/)\nadd_executable(${PROJECT_NAME} ./src/main.cpp)\n"
+    CMAKE_CONTENT="cmake_minimum_required(VERSION 2.8)\nproject(${PROJECT_EXECUTE})\nset(CMAKE_CXX_STANDARD 11)\nset(CMAKE_RUNTIME_OUTPUT_DIRECTORY \${PROJECT_SOURCE_DIR}/bin/)\nadd_executable(${PROJECT_EXECUTE} ./src/main.cpp)\n"
     MAIN_CONTENT='#include <iostream>\nint main()\n{\n    std::cout << "hello world!" << std::endl;\n    return 1;\n}\n'
 
     echo
