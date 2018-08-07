@@ -10,6 +10,7 @@ help()
     echo "  -c       create project"
     echo "  -r       remove project"
     echo "  -b       build project"
+    echo "  -rb      rebuild project"
     echo "  -e       execute project"
     echo
 }
@@ -18,12 +19,18 @@ help()
 if [ $# -gt 2 ]
 then
     echo
-    echo "-- Usage: cbuild <[-c][-r][-b][-e]> [your_project_name]"
+    echo "-- Usage: cbuild <[-c][-r][-b][-rb][-e][-h]> [your_project_name]"
     echo
     exit
 fi
 
-CBUILD_PATH="$HOME/.cbuild.path"
+CBUILD_PATH="$HOME/.cbuild"
+if [ ! -d "$CBUILD_PATH" ]
+then 
+    mkdir $CBUILD_PATH
+    mkdir $CBUILD_PATH/template
+fi
+
 # help information
 if [ "$1" = "-h" ]
 then
@@ -32,7 +39,7 @@ then
 else
     if [ $# -ne 2 ]
     then
-        if [ -f "${CBUILD_PATH}" ] 
+        if [ -f "${CBUILD_PATH}/cbuild.path" ] 
         then 
             i=0
             while read line
@@ -46,7 +53,7 @@ else
                     PROJECT_EXECUTE=$line
                 fi
                 i=`expr $i + 1`
-            done < $CBUILD_PATH
+            done < $CBUILD_PATH/cbuild.path
         else 
         echo
         echo "-- Usage: cbuild <[-c][-r][-b][-e]> [your_project_name]"
@@ -56,10 +63,11 @@ else
     else
         PROJECT_NAME="$2"
         PROJECT_EXECUTE="$2"
-        echo $(pwd)/$PROJECT_NAME > $CBUILD_PATH
-        echo $PROJECT_NAME >> $CBUILD_PATH
+        echo $(pwd)/$PROJECT_NAME > $CBUILD_PATH/cbuild.path
+        echo $PROJECT_NAME >> $CBUILD_PATH/cbuild.path
     fi 
 fi
+
 # remove the project
 if [ "$1" = "-r" ]
 then
@@ -86,7 +94,26 @@ then
         echo "-- Building: ${PROJECT_NAME}"
         echo
         cd ${PROJECT_NAME}/build
-        echo `pwd`
+        cmake ..
+        make -j4
+        exit
+    fi
+    echo 
+    echo "-- Error: no such project"
+    echo
+    exit     
+fi
+
+# rebuild the project
+if [ "$1" = "-rb" ]
+then
+    if [ -d "${PROJECT_NAME}" ]
+    then 
+        echo 
+        echo "-- Rebuilding: ${PROJECT_NAME}"
+        echo
+        cd ${PROJECT_NAME}/build
+        rm -fr ./*
         cmake ..
         make -j4
         exit
@@ -128,20 +155,16 @@ then
         exit
     fi
  
-    # text content
-    CMAKE_CONTENT="cmake_minimum_required(VERSION 2.8)\nproject(${PROJECT_EXECUTE})\nset(CMAKE_CXX_STANDARD 11)\nset(CMAKE_RUNTIME_OUTPUT_DIRECTORY \${PROJECT_SOURCE_DIR}/bin/)\nadd_executable(${PROJECT_EXECUTE} ./src/main.cpp)\n"
-    MAIN_CONTENT='#include <iostream>\nint main()\n{\n    std::cout << "hello world!" << std::endl;\n    return 1;\n}\n'
-
     echo
     echo "-- Build Project: ${PROJECT_NAME}"
 
     # build the project
     mkdir ${PROJECT_NAME}
-    echo ${CMAKE_CONTENT} > ${PROJECT_NAME}/CMakeLists.txt
+    sed 's/{__CBUILD_PROJECT__}/'${PROJECT_EXECUTE}'/g' $CBUILD_PATH/template/CMakeLists.txt > ${PROJECT_NAME}/CMakeLists.txt
     mkdir ${PROJECT_NAME}/build
     mkdir ${PROJECT_NAME}/bin
     mkdir ${PROJECT_NAME}/src
-    echo ${MAIN_CONTENT} > ${PROJECT_NAME}/src/main.cpp
+    cp $CBUILD_PATH/template/main.cpp ${PROJECT_NAME}/src/main.cpp
     mkdir ${PROJECT_NAME}/include
     mkdir ${PROJECT_NAME}/lib
     echo
